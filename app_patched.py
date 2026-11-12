@@ -1,8 +1,3 @@
-"""
-Исправленная версия учебного приложения.
-Защита: параметризованный SQL-запрос и проверка владельца профиля.
-Запуск: python app_patched.py
-"""
 from flask import Flask, request, session, redirect, url_for, render_template_string, abort
 import sqlite3
 from pathlib import Path
@@ -63,7 +58,6 @@ def login():
     if request.method == "POST":
         username = request.form.get("username", "")
         password = request.form.get("password", "")
-        # ИСПРАВЛЕНИЕ №1: параметры передаются отдельно от SQL-кода.
         query = "SELECT id, username FROM users WHERE username = ? AND password = ?"
         with connect_db() as db:
             user = db.execute(query, (username, password)).fetchone()
@@ -78,7 +72,6 @@ def login():
 def profile(user_id):
     if "user_id" not in session:
         return redirect(url_for("login"))
-    # ИСПРАВЛЕНИЕ №2: пользователь может читать только собственный профиль.
     if user_id != session["user_id"]:
         abort(403)
     with connect_db() as db:
