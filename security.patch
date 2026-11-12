@@ -1,0 +1,63 @@
+--- a/app.py
++++ b/app.py
+@@ -1,12 +1,9 @@
+ """
+-Учебное веб-приложение с двумя намеренно внесёнными уязвимостями:
+-1) SQL Injection в форме входа;
+-2) IDOR / Broken Access Control в просмотре профилей.
+-
+-Запуск: python app.py
+-Только для локальной лабораторной работы. Не публикуйте уязвимую версию в интернете.
++Исправленная версия учебного приложения.
++Защита: параметризованный SQL-запрос и проверка владельца профиля.
++Запуск: python app_patched.py
+ """
+-from flask import Flask, request, session, redirect, url_for, render_template_string
++from flask import Flask, request, session, redirect, url_for, render_template_string, abort
+ import sqlite3
+ from pathlib import Path
+ 
+@@ -15,7 +12,7 @@
+ DB_PATH = Path(__file__).with_name("lab.db")
+ 
+ LOGIN_PAGE = """
+-<h1>Вход в систему (уязвимая версия)</h1>
++<h1>Вход в систему (исправленная версия)</h1>
+ <form method="post">
+   <label>Логин <input name="username" required></label><br>
+   <label>Пароль <input name="password" type="password" required></label><br>
+@@ -66,13 +63,10 @@
+     if request.method == "POST":
+         username = request.form.get("username", "")
+         password = request.form.get("password", "")
+-        # УЯЗВИМОСТЬ №1: пользовательский ввод напрямую вставляется в SQL.
+-        query = (
+-            "SELECT id, username FROM users "
+-            f"WHERE username = '{username}' AND password = '{password}'"
+-        )
++        # ИСПРАВЛЕНИЕ №1: параметры передаются отдельно от SQL-кода.
++        query = "SELECT id, username FROM users WHERE username = ? AND password = ?"
+         with connect_db() as db:
+-            user = db.execute(query).fetchone()
++            user = db.execute(query, (username, password)).fetchone()
+         if user:
+             session["user_id"] = user["id"]
+             session["username"] = user["username"]
+@@ -84,6 +78,9 @@
+ def profile(user_id):
+     if "user_id" not in session:
+         return redirect(url_for("login"))
++    # ИСПРАВЛЕНИЕ №2: пользователь может читать только собственный профиль.
++    if user_id != session["user_id"]:
++        abort(403)
+     with connect_db() as db:
+         user = db.execute(
+             "SELECT id, username, full_name, email FROM users WHERE id = ?",
+@@ -91,7 +88,6 @@
+         ).fetchone()
+     if not user:
+         return "Пользователь не найден", 404
+-    # УЯЗВИМОСТЬ №2: не проверяется, принадлежит ли профиль текущему пользователю.
+     return (
+         f"<h1>Профиль пользователя</h1>"
+         f"<p>ID: {user['id']}</p><p>Логин: {user['username']}</p>"
