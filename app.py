@@ -1,11 +1,3 @@
-"""
-Учебное веб-приложение с двумя намеренно внесёнными уязвимостями:
-1) SQL Injection в форме входа;
-2) IDOR / Broken Access Control в просмотре профилей.
-
-Запуск: python app.py
-Только для локальной лабораторной работы. Не публикуйте уязвимую версию в интернете.
-"""
 from flask import Flask, request, session, redirect, url_for, render_template_string
 import sqlite3
 from pathlib import Path
@@ -66,7 +58,6 @@ def login():
     if request.method == "POST":
         username = request.form.get("username", "")
         password = request.form.get("password", "")
-        # УЯЗВИМОСТЬ №1: пользовательский ввод напрямую вставляется в SQL.
         query = (
             "SELECT id, username FROM users "
             f"WHERE username = '{username}' AND password = '{password}'"
@@ -91,7 +82,7 @@ def profile(user_id):
         ).fetchone()
     if not user:
         return "Пользователь не найден", 404
-    # УЯЗВИМОСТЬ №2: не проверяется, принадлежит ли профиль текущему пользователю.
+      
     return (
         f"<h1>Профиль пользователя</h1>"
         f"<p>ID: {user['id']}</p><p>Логин: {user['username']}</p>"
